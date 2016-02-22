@@ -1,0 +1,19 @@
+{
+  "name": "newswatcherTest",
+  "version": "0.0.0",
+  "description": "newswatcherTest",
+  "main": "app.js",
+  "author": {
+    "name": "BUSHPC",
+    "email": ""
+  },
+  "scripts": {
+    "test": "./node_modules/.bin/mocha --timeout 30000 functional_api_crud.js"
+  },
+  "dependencies": {
+    "async": "^1.5.2",
+    "mocha": "^2.4.4",
+    "selenium-webdriver": "^2.48.2",
+    "supertest": "^1.1.0"
+  }
+}

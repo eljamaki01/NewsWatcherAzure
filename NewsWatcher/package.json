@@ -1,0 +1,25 @@
+{
+  "name": "NewsWatcher",
+  "version": "0.0.0",
+  "description": "NewsWatcher",
+  "main": "server.js",
+  "author": {
+    "name": "BUSHPC",
+    "email": ""
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "async": "^1.5.2",
+    "bcryptjs": "^2.3.0",
+    "body-parser": "^1.14.2",
+    "documentdb": "^1.5.3",
+    "express": "^4.13.4",
+    "joi": "^8.0.1",
+    "jwt-simple": "^0.4.1",
+    "morgan": "^1.6.1",
+    "response-time": "^2.3.1",
+    "v8-profiler": "^5.5.0"
+  }
+}
