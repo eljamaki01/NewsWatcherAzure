@@ -38,60 +38,59 @@ router.post('/', authHelper.checkAuth, function (req, res, next) {
 	};
 	
 	joi.validate(req.body, schema, function (err, value) {
-		if (err) {
+		if (err)
 			return next(err);
-		} else {
-			// We first make sure we are not at the 100 count limit.
-			// In theory, we don't need to use the continuation token since we are limiting the number to 30 anyway
-			req.db.client.executeStoredProcedure(config.countSProcSelfId, ["SELECT * FROM c where c.type = 'SHAREDSTORY_TYPE'", null], function (err, resource, resHeaders) {
-				if (err)
+		
+		// We first make sure we are not at the 100 count limit.
+		// In theory, we don't need to use the continuation token since we are limiting the number to 30 anyway
+		req.db.client.executeStoredProcedure(config.countSProcSelfId, ["SELECT * FROM c where c.type = 'SHAREDSTORY_TYPE'", null], function (err, resource, resHeaders) {
+			if (err)
+				return next(err);
+			
+			console.log("SharedNews count executeStoredProcedure RUs: ", resHeaders['x-ms-request-charge']);
+			
+			// Just a sanity check to make sure that no continuation token is ever returned
+			if (resource.continuationToken != null)
+				return next(new Error('Issue with count stored procedure'));
+			
+			if (resource.count > config.MAX_SHARED_STORIES)
+				return next(new Error('Shared story limit reached'));
+			
+			// Make sure the story was not already shared
+			var docLink = config.collPath + req.body.storyID;
+			
+			req.db.client.readDocument(docLink, function (err, doc, resHeaders) {
+				if (err && (err.code != 404))
 					return next(err);
+				if (doc)
+					return next(new Error('Story was already shared.'));
 				
-				console.log("SharedNews count executeStoredProcedure RUs: ", resHeaders['x-ms-request-charge']);
+				console.log("User readDocument RUs: ", resHeaders['x-ms-request-charge']);
 				
-				// Just a sanity check to make sure that no continuation token is ever returned
-				if (resource.continuationToken != null)
-					return next(new Error('Issue with count stored procedure'));
+				// Create this as a shared news story Document.
+				// Note that we don't need to worry about simultaneous post requests creating the same story,
+				// id uniqueness will force that and fail other requests.
+				var xferStory = {
+					id : req.body.storyID,
+					type : 'SHAREDSTORY_TYPE',
+					story: req.body,
+					comments : [{
+							displayName: req.auth.displayName,
+							userId : req.auth.userId,
+							dateTime: Date.now(),
+							comment: req.auth.displayName + " thought everyone might enjoy this!"
+						}]
+				};
 				
-				if (resource.count > config.MAX_SHARED_STORIES)
-					return next(new Error('Shared story limit reached'));
-				
-				// Make sure the story was not already shared
-				var docLink = config.collPath + req.body.storyID;
-				
-				req.db.client.readDocument(docLink, function (err, doc, resHeaders) {
-					if (err && (err.code != 404))
+				req.db.client.createDocument(req.db.collection_self, xferStory, function (err, createdDoc, resHeaders) {
+					if (err)
 						return next(err);
-					if (doc)
-						return next(new Error('Story was already shared.'));
 					
-					console.log("User readDocument RUs: ", resHeaders['x-ms-request-charge']);
-					
-					// Create this as a shared news story Document.
-					// Note that we don't need to worry about simultaneous post requests creating the same story,
-					// id uniqueness will force that and fail other requests.
-					var xferStory = {
-						id : req.body.storyID,
-						type : 'SHAREDSTORY_TYPE',
-						story: req.body,
-						comments : [{
-								displayName: req.auth.displayName,
-								userId : req.auth.userId,
-								dateTime: Date.now(),
-								comment: req.auth.displayName + " thought everyone might enjoy this!"
-							}]
-					};
-					
-					req.db.client.createDocument(req.db.collection_self, xferStory, function (err, createdDoc, resHeaders) {
-						if (err)
-							return next(err);
-						
-						console.log("SharedNews createDocument RUs: ", resHeaders['x-ms-request-charge']);
-						res.status(201).json(createdDoc);
-					});
+					console.log("SharedNews createDocument RUs: ", resHeaders['x-ms-request-charge']);
+					res.status(201).json(createdDoc);
 				});
 			});
-		}
+		});
 	});
 });
 
@@ -153,15 +152,14 @@ router.post('/:sid/Comments', authHelper.checkAuth, function (req, res, next) {
 	};
 	
 	joi.validate(req.body, schema, function (err, value) {
-		if (err) {
+		if (err)
 			return next(err);
-		} else {
-			q.push({ fcn: postSharedStoryComment, params: { retryCount: 0, req: req, res: res, next: next } }, function (err) {
-				if (err) {
-					console.log('Finished processing postSharedStoryComment. ERR: ', err);
-				}
-			});
-		}
+		
+		q.push({ fcn: postSharedStoryComment, params: { retryCount: 0, req: req, res: res, next: next } }, function (err) {
+			if (err) {
+				console.log('Finished processing postSharedStoryComment. ERR: ', err);
+			}
+		});
 	});
 });
 function postSharedStoryComment(params, callback) {

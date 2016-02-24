@@ -151,14 +151,13 @@ router.put('/:id', authHelper.checkAuth, function (req, res, next) {
 	
 	// clear out leading and trailing spaces
 	for (var i = 0; i < req.body.filters.length; i++) {
-		req.body.filters[i].keyWords = req.body.filters[i].keywordsStr.split(',');
 		if ("keyWords" in req.body.filters[i] && req.body.filters[i].keyWords[0] != "") {
 			for (var j = 0; j < req.body.filters[i].keyWords.length; j++) {
 				req.body.filters[i].keyWords[j] = req.body.filters[i].keyWords[j].trim();
 			}
 		}
 	}
-		
+	
 	// Validate the filters
 	var schema = {
 		name: joi.string().min(1).max(30).regex(/^[-_ a-zA-Z0-9]+$/).required(),
@@ -244,15 +243,14 @@ router.post('/:id/savedstories', authHelper.checkAuth, function (req, res, next)
 	};
 	
 	joi.validate(req.body, schema, function (err, value) {
-		if (err) {
+		if (err)
 			return next(err);
-		} else {
-			q.push({ fcn: postSavedStoryUser, params: { retryCount: 0, req: req, res: res, next: next } }, function (err) {
-				if (err) {
-					console.log('Finished processing postSavedStoryUser. err:', err);
-				}
-			});
-		}
+		
+		q.push({ fcn: postSavedStoryUser, params: { retryCount: 0, req: req, res: res, next: next } }, function (err) {
+			if (err) {
+				console.log('Finished processing postSavedStoryUser. err:', err);
+			}
+		});
 	});
 });
 function postSavedStoryUser(params, callback) {
