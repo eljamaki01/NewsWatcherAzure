@@ -167,11 +167,6 @@ angular.module('app', ['ngRoute'])
 			// Take the comma separated words and turn back into array.
 			for (var i = 0; i < $scope.user.filters.length; i++) {
 				$scope.user.filters[i].keyWords = $scope.user.filters[i].keywordsStr.split(',');
-				if ("keyWords" in $scope.user.filters[i] && $scope.user.filters[i].keyWords[0] != "") {
-					for (var j = 0; j < $scope.user.filters[i].keyWords.length; j++) {
-						$scope.user.filters[i].keyWords[j].trim();
-					}
-				}
 			}
 			
 			$http({

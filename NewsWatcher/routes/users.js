@@ -149,6 +149,16 @@ router.put('/:id', authHelper.checkAuth, function (req, res, next) {
 	if (req.body.filters.length > config.MAX_FILTERS)
 		return next(new Error('Too many news filters'));
 	
+	// clear out leading and trailing spaces
+	for (var i = 0; i < req.body.filters.length; i++) {
+		req.body.filters[i].keyWords = req.body.filters[i].keywordsStr.split(',');
+		if ("keyWords" in req.body.filters[i] && req.body.filters[i].keyWords[0] != "") {
+			for (var j = 0; j < req.body.filters[i].keyWords.length; j++) {
+				req.body.filters[i].keyWords[j] = req.body.filters[i].keyWords[j].trim();
+			}
+		}
+	}
+		
 	// Validate the filters
 	var schema = {
 		name: joi.string().min(1).max(30).regex(/^[-_ a-zA-Z0-9]+$/).required(),
