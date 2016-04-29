@@ -47,7 +47,7 @@ router.post('/', function postSession(req, res, next) {
 			if (user) {
 				bcrypt.compare(req.body.password, user.passwordHash, function comparePassword(err, match) {
 					if (match) {
-						var token = jwt.encode({ authorized : true, userId : user.id, _self : user._self, displayName : user.displayName }, config.JWT_SECRET);
+						var token = jwt.encode({ authorized: true, sessionIP: req.ip, sessionUA: req.headers['user-agent'], userId: user.id, _self: user._self, displayName: user.displayName }, config.JWT_SECRET);
 						res.status(201).json({ displayName : user.displayName, userId : user.id, token: token, msg: 'Authorized' });
 					} else {
 						return next(new Error('Wrong password'));
