@@ -20,6 +20,7 @@ var session = require('./routes/session');
 var sharedNews = require('./routes/sharedNews');
 
 var app = express();
+app.enable('trust proxy'); // Since we are behind reverse proxy/load balancing with IIS Web App
 app.use(helmet()); // Take the defaults to start with
 app.use(helmet.csp({
 	// Specify directives for content sources
