@@ -15,7 +15,17 @@ module.exports.checkAuth = function (req, res, next) {
 		try {
 			req.auth = jwt.decode(req.headers['x-auth'], config.JWT_SECRET);
 			
-			if (req.auth && req.auth.authorized && req.auth.userId && req.auth.sessionIP === req.ip && req.auth.sessionUA === req.headers['user-agent']) {
+
+			
+			var ipStr;
+			var n = req.ip.indexOf(':');
+			if (n !== -1) {
+				ipStr = req.ip.substring(0, n);
+			} else {
+				ipStr = req.ip;
+			}
+			
+			if (req.auth && req.auth.authorized && req.auth.userId && req.auth.sessionIP === ipStr && req.auth.sessionUA === req.headers['user-agent']) {
 				return next();
 			} else {
 				return next(new Error('User is not logged in.'));
