@@ -187,7 +187,13 @@ newsPullBackgroundTimer = setInterval(function () {
 					console.log("Master news readDocument RUs: ", resHeaders['x-ms-request-charge']);
 					globalNewsDoc.newsStories = [];
 					for (var i = 0; i < results.length; i++) {
-						var news = JSON.parse(results[i]);
+						// JSON.parse is syncronous and it will throw an exception on invalid JSON, so we can catch it
+						try {
+							var news = JSON.parse(results[i]);
+						} catch (e) {
+							console.error(e);
+							return;
+						}
 						for (var j = 0; j < news.results.length; j++) {
 							var xferNewsStory = {
 								link: news.results[j].url,
@@ -224,7 +230,7 @@ newsPullBackgroundTimer = setInterval(function () {
 			});
 		}
 	});
-}, 60 * 60 * 1000);
+}, 120 * 60 * 1000);
 
 function refreshAllUserStories(globalNewsDoc) {
 	dbClient.replaceDocument(config.globalNewsStoriesDocumentSelfId, globalNewsDoc, { indexingDirective: "Exclude" }, function (err, replaced, resHeaders) {
