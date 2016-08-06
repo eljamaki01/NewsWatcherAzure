@@ -11,10 +11,10 @@ var assert = require('assert');
 //var request = require('supertest')('http://localhost:3000'); // For local testing from command line launching
 var request = require('supertest')('http://localhost:1337'); // For local testing for VS launching
 
-var NUM_USERS = 50;
+var NUM_USERS = 10;
 var MAX_PARALLEL_BEFOREAFTER = 2;
 var MAX_PARALLEL_WORKLOAD = 6;
-var NUM_WORK_LOOPS = 10;
+var NUM_WORK_LOOPS = 3;
 
 var usersP = [];
 for (var i = 0; i < NUM_USERS; i++) {

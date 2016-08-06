@@ -20,6 +20,7 @@ var dbClient = new DocumentDBClient(config.host, { masterKey: config.authKey });
 
 var newsPullBackgroundTimer;
 var staleStoryDeleteBackgroundTimer;
+var globalNewsDoc;
 
 console.log('FORK_RUNNING');
 
@@ -34,7 +35,7 @@ process.on('message', function (m) {
 	if (m.msg) {
 		if (m.msg == 'REFRESH_STORIES') {
 			setImmediate(function (doc) {
-				refreshStoriesMSG(doc, null, null);
+				refreshStoriesMSG(doc, null);
 			}, m.doc);
 		}
 	} else {
@@ -46,7 +47,7 @@ process.on('message', function (m) {
 // Resync news stories after a user has altered their filter.
 // For a given user and for every filter they have set up, search all news stories for matches.
 //
-function refreshStoriesMSG(userDoc, globalNewsDoc, callback) {
+function refreshStoriesMSG(userDoc, callback) {
 	if (!globalNewsDoc) {
 		dbClient.readDocument(config.globalNewsStoriesDocumentSelfId, function (err, gDoc, resHeaders) {
 			if (err) {
@@ -57,14 +58,15 @@ function refreshStoriesMSG(userDoc, globalNewsDoc, callback) {
 					return;
 			} else {
 				console.log("Master news readDocument RUs: ", resHeaders['x-ms-request-charge']);
-				refreshStories(userDoc, gDoc, callback);
+				globalNewsDoc = gDoc;
+				refreshStories(userDoc, callback);
 			}
 		});
 	} else {
-		refreshStories(userDoc, globalNewsDoc, callback);
+		refreshStories(userDoc, callback);
 	}
 }
-function refreshStories(userDoc, globalNewsDoc, callback) {
+function refreshStories(userDoc, callback) {
 	// Loop through all filters and seek matches for all returned stories
 	for (var filterIdx = 0; filterIdx < userDoc.filters.length; filterIdx++) {
 		userDoc.filters[filterIdx].newsStories = [];
@@ -180,12 +182,12 @@ newsPullBackgroundTimer = setInterval(function () {
 			console.log('success');
 			
 			// Do the replacement of the news stories in the single master Document holder
-			dbClient.readDocument(config.globalNewsStoriesDocumentSelfId, function (err, globalNewsDoc, resHeaders) {
+			dbClient.readDocument(config.globalNewsStoriesDocumentSelfId, function (err, gDoc, resHeaders) {
 				if (err) {
 					console.log('Error with the global news globalNewsDoc read request: ' + JSON.stringify(err.body, null, 4));
 				} else {
 					console.log("Master news readDocument RUs: ", resHeaders['x-ms-request-charge']);
-					globalNewsDoc.newsStories = [];
+					gDoc.newsStories = [];
 					for (var i = 0; i < results.length; i++) {
 						// JSON.parse is syncronous and it will throw an exception on invalid JSON, so we can catch it
 						try {
@@ -203,12 +205,12 @@ newsPullBackgroundTimer = setInterval(function () {
 								source: news.results[j].domain,
 								date: news.results[j].date
 							};
-							globalNewsDoc.newsStories.push(xferNewsStory);
+							gDoc.newsStories.push(xferNewsStory);
 						}
 					}
 					
 					// Trying async call as sync seemed to clog up the Node processing loop and the documentDB driver kept doing an ECONNRESET
-					async.eachSeries(globalNewsDoc.newsStories, function (story, innercallback) {
+					async.eachSeries(gDoc.newsStories, function (story, innercallback) {
 						bcrypt.hash(story.link, 10, function getHash(err, hash) {
 							if (err)
 								innercallback(err);
@@ -221,18 +223,19 @@ newsPullBackgroundTimer = setInterval(function () {
 							console.log('failure on story id creation');
 						} else {
 							console.log('story id creation success');
-							setImmediate(function (doc) {
-								refreshAllUserStories(doc);
-							}, globalNewsDoc);
+							globalNewsDoc = gDoc;
+							setImmediate(function () {
+								refreshAllUserStories();
+							});
 						}
 					});
 				}
 			});
 		}
 	});
-}, 120 * 60 * 1000);
+}, 240 * 60 * 1000);
 
-function refreshAllUserStories(globalNewsDoc) {
+function refreshAllUserStories() {
 	dbClient.replaceDocument(config.globalNewsStoriesDocumentSelfId, globalNewsDoc, { indexingDirective: "Exclude" }, function (err, replaced, resHeaders) {
 		if (err) {
 			console.log('err:', err);
@@ -246,7 +249,7 @@ function refreshAllUserStories(globalNewsDoc) {
 				function (callback) {
 					cursor.nextItem(function (err, doc) {
 						if (doc) {
-							refreshStories(doc, globalNewsDoc, function (err) {
+							refreshStories(doc, function (err) {
 								callback(null);
 							});
 						} else {
